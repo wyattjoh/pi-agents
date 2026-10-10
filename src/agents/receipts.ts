@@ -53,6 +53,8 @@ export type AgentReceipt = {
   model?: string;
   /** In a graph: the agents whose results it receives, by name. */
   inputs?: string[];
+  /** The task it was started with, for agents that look for others. */
+  task?: string;
   /** How it was when the call looked; absent when the call only started
    * it. */
   outcome?: NodeKind;

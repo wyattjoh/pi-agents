@@ -16,6 +16,10 @@ import {
   type DelegationLimits,
 } from "./delegation.js";
 import { createGraphsExtension } from "./graphs.js";
+import {
+  createMessagingExtension,
+  type MessagingOptions,
+} from "./messaging.js";
 import type { HelperResolver } from "./types.js";
 
 export interface AgentExtensions {
@@ -28,6 +32,8 @@ export interface AgentExtensions {
   graphs: Extension;
   /** `delegate_graph`; only delegating agents select it. */
   delegation: Extension;
+  /** `agent_send`; agents started while messaging is on select it. */
+  messaging: Extension;
 }
 
 export interface AgentExtensionOptions {
@@ -36,6 +42,7 @@ export interface AgentExtensionOptions {
   resolveHelper: HelperResolver;
   /** Tests only: tighter delegation limits. */
   delegationLimits?: Partial<DelegationLimits>;
+  messaging?: MessagingOptions;
 }
 
 export function createAgentExtensions(
@@ -52,6 +59,7 @@ export function createAgentExtensions(
       limits: { ...DELEGATION_LIMITS, ...options.delegationLimits },
       extensions: [tools, prompt],
     }),
+    messaging: createMessagingExtension(options.messaging),
   };
 }
 
@@ -64,23 +72,25 @@ export function installAgentExtensions(
     extensions.prompt,
     extensions.graphs,
     extensions.delegation,
+    extensions.messaging,
   ])
     registry.install(extension);
 }
 
 /**
- * What an agent selects: its tools and prompt, and delegation when it
- * delegates. Agents stored before they selected explicitly follow the
+ * What an agent selects: its tools and prompt, delegation when it
+ * delegates, and messaging when it may message other agents. Agents stored before they selected explicitly follow the
  * harness's default, which Pi's host sets to the selection of an agent that
  * doesn't delegate.
  */
 export function agentSelection(
   extensions: AgentExtensions,
-  options: { delegate?: boolean } = {},
+  options: { delegate?: boolean; messaging?: boolean } = {},
 ): Extension[] {
   return [
     extensions.tools,
     extensions.prompt,
     ...(options.delegate ? [extensions.delegation] : []),
+    ...(options.messaging ? [extensions.messaging] : []),
   ];
 }

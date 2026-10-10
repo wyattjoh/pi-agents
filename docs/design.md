@@ -245,6 +245,37 @@ delegating agent's conversation
 - The tool result is the graph's delivery; Pi's outbox isn't involved. Once
   the call ended, the service closes the graph and its helpers.
 
+### Messages between agents
+
+Experimental, behind `piAgents.messaging`; `docs/messaging.md` states the
+guarantees and what's left out. The extension `pi-agents-messaging` holds
+two tools:
+
+- `agent_status` lists the other agents, open and not helpers, with their
+  state and the task each was started with, cut at 4,000 characters.
+- `agent_send` submits a message to another agent's conversation and
+  returns without waiting. Like the parent's messages, it steers a working
+  recipient unless `followUp` queues it after the current work.
+
+Mechanics:
+
+- The submission's request ID is `message:<sender>:<tool task>`, so a rerun
+  of the call after a restart finds it: `replay: "safe"`, and the recipient
+  admits the message once.
+- The recipient sees `[from <name>] <text>`; the prompt says these come from
+  agents, not the user. Its answer stays in its conversation and never
+  reaches the parent, whose deliveries follow parent requests only.
+- Helpers neither send nor receive. A stopped agent's record says so until
+  the parent or the user messages it, and the tool refuses it meanwhile.
+- Agents started while the setting is on select the extension; the registry
+  always installs it, so turning the setting off later doesn't break them,
+  and the tool then refuses.
+- The log `pi-agents.messages` keeps the latest 1,000 messages for the UI
+  and counts the ones it dropped; it's written after the submission under
+  the same ID. A message's status comes from its submission: queued,
+  delivered once placed, or dropped when an interrupt withdrew it from the
+  inbox.
+
 ## Delivery
 
 Parent requests use an outbox: the record stores the request ID and message
@@ -425,7 +456,8 @@ details no version reads show the result's text.
 Pi's transcript and the attach view each have a map from tool name to
 renderers, since the parent's tools and the agents' tools differ: the
 parent's tools use them through their definitions, and the attach view
-draws `delegate_graph` with its own, and Pi's tools with Pi's.
+draws the agents' `delegate_graph`, `agent_status`, and `agent_send`, a
+message card, with its own, and Pi's tools with Pi's.
 
 ## Frontend
 
@@ -447,6 +479,26 @@ draws `delegate_graph` with its own, and Pi's tools with Pi's.
   it works, else until it ended, from durable task end times that survive
   restarts. An agent's detail shows its task and its latest result; a
   graph's detail says its order in words and shows each agent's result.
+- Messages between agents, with messaging on. One line format everywhere:
+  `□ scout → notes  <first line>  ◷`, the kind glyph, sender and recipient in
+  bold in a fixed-width column, the text, and the status at the right edge:
+  `◷` queued, `✔` delivered, `✘` dropped. The glyphs are constants in
+  `src/ui/messages.ts`.
+  - Panel: the latest messages of the agents it shows, in a column to their
+    right from 120 terminal columns, else stacked below them; a dim line
+    counts earlier ones. ↑↓ reach them, ⏎ opens a message's thread, `m`
+    hides them, `v` switches the view, both for the session.
+  - Transcript: one custom entry per message, a card on Pi's message
+    background that Pi's model doesn't see. Entries only append and are
+    deduplicated by message ID and send time; Ctrl+O shows a long message in
+    full.
+  - Attach view: incoming messages as cards, never as the user's input, and
+    queued ones as message lines; the agent's own `agent_send` calls as cards
+    too, with a refusal below.
+  - `/messages`: threads, everything two agents sent each other, latest
+    first, and the selected thread's messages in full. ⏎ asks which of the
+    two agents to attach to, Tab opens `/agents`. An agent's details in
+    `/agents` list its threads, and `m` opens them.
 - pi-durable's task graph stays out of the UI. `AgentService.liveTasks()`
   exposes it for tests and debugging.
 - The fancy-footer integration reports working and idle counts.

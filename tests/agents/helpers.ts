@@ -15,6 +15,7 @@ import {
   type AgentExtensions,
   createAgentExtensions,
 } from "../../src/agents/extensions.js";
+import type { MessagingOptions } from "../../src/agents/messaging.js";
 import {
   type Attention,
   AttentionSignals,
@@ -170,6 +171,8 @@ export interface HostOptions {
   trusted?: boolean;
   skills?: SkillSource;
   delegationLimits?: Partial<DelegationLimits>;
+  /** Turns messaging between agents on. */
+  messaging?: MessagingOptions;
 }
 
 /** What a test host opened for a service: the harness and its anchor. */
@@ -192,6 +195,7 @@ export function testExtensions(options: HostOptions = {}): AgentExtensions {
     ...(options.delegationLimits
       ? { delegationLimits: options.delegationLimits }
       : {}),
+    ...(options.messaging ? { messaging: options.messaging } : {}),
   });
 }
 
@@ -213,6 +217,7 @@ export async function openService(
       anchor: harness.anchor,
       extensions,
       parent,
+      messaging: () => options.messaging !== undefined,
     });
     harness.harness.resume();
     hosts.set(service, { service, harness, extensions, parent });
